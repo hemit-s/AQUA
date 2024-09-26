@@ -33,11 +33,11 @@ import path from 'path';
 import fs from 'fs';
 import { exec } from 'child_process';
 import {
-  checkConfigFile,
+  checkConfigFilePath,
   fetchSettings,
   flush,
   save,
-  updateConfig,
+  updateConfigFilePath,
   savePreset,
   fetchPreset,
   renamePreset,
@@ -69,6 +69,7 @@ import {
   FixedBandSizeEnum,
   getDefaultFilters,
   IFiltersMap,
+  DEFAULT_CONFIG_FILENAME,
 } from '../common/constants';
 import { ErrorCode } from '../common/errors';
 import {
@@ -115,7 +116,7 @@ const setWindowDimension = (isExpanded: boolean) => {
 const userDataDir = app.getPath('userData');
 const presetPath = path.join(userDataDir, PRESETS_DIR);
 const state: IState = fetchSettings(userDataDir);
-let configPath = '';
+let equalizerApoConfigPath = '';
 
 try {
   // create presets dir if it doesn't exist
@@ -168,7 +169,7 @@ const handleError = (
   errorCode: ErrorCode
 ) => {
   const reply: TError = { errorCode };
-  console.log(channel);
+  console.log(`Error code ${errorCode} detected on channel ${channel}`);
   event.reply(channel, reply);
 };
 
@@ -177,11 +178,20 @@ const updateConfigPath = async (
   channel: ChannelEnum | string
 ) => {
   try {
-    // Retrive configPath assuming EqualizerAPO is installed
-    configPath = await getConfigPath();
+    // Fetch and set the equalizerApoConfigPath so we can edit aqua.txt
+    equalizerApoConfigPath = await getConfigPath();
+
+    if (!state.configFilePath) {
+      // Retrive configPath assuming EqualizerAPO is installed
+      state.configFilePath = path.join(
+        equalizerApoConfigPath,
+        DEFAULT_CONFIG_FILENAME
+      );
+    }
+
     // Overwrite the config file if necessary
-    if (!checkConfigFile(configPath)) {
-      updateConfig(configPath);
+    if (!checkConfigFilePath(state.configFilePath)) {
+      updateConfigFilePath(state.configFilePath);
     }
   } catch (e) {
     handleError(event, channel, ErrorCode.CONFIG_NOT_FOUND);
@@ -202,9 +212,21 @@ const handleUpdateHelper = async <T>(
     return;
   }
 
+  // Check that the config file exists
+  try {
+    checkConfigFilePath(
+      state.configFilePath ||
+        // Assume the equalizerApo config path has been fetched by the time we are processing updates
+        path.join(equalizerApoConfigPath, DEFAULT_CONFIG_FILENAME)
+    );
+  } catch (e) {
+    handleError(event, channel, ErrorCode.CONFIG_NOT_FOUND);
+    return;
+  }
+
   try {
     // Flush changes to EqualizerAPO with a retry in case several requests to write are occuring at the same time
-    retryHelper(5, () => flush(state, configPath));
+    retryHelper(5, () => flush(state, equalizerApoConfigPath));
   } catch (e) {
     handleError(event, channel, ErrorCode.FAILURE);
     return;
@@ -414,8 +436,6 @@ ipcMain.on(ChannelEnum.GET_STATE, async (event) => {
   if (res) {
     const reply: TSuccess<IState> = { result: state };
     event.reply(channel, reply);
-  } else {
-    handleError(event, channel, ErrorCode.CONFIG_NOT_FOUND);
   }
 });
 
@@ -663,6 +683,20 @@ ipcMain.on(ChannelEnum.SET_FIXED_BAND, async (event, arg) => {
   state.filters = getDefaultFilters(size);
 
   await handleUpdateHelper<IFiltersMap>(event, channel, state.filters);
+});
+
+ipcMain.on(ChannelEnum.UPDATE_CONFIG_FILE_PATH, async (event, arg) => {
+  const channel = ChannelEnum.UPDATE_CONFIG_FILE_PATH;
+  const filePath: string = arg[0];
+
+  // Cannot fall below the minimum number of filters
+  if (!fs.existsSync(filePath)) {
+    handleError(event, channel, ErrorCode.INVALID_PARAMETER);
+    return;
+  }
+
+  state.configFilePath = filePath;
+  await handleUpdate(event, channel);
 });
 
 ipcMain.on(ChannelEnum.SET_WINDOW_SIZE, async (event, arg) => {

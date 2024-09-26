@@ -29,6 +29,7 @@ import Spinner from 'renderer/icons/Spinner';
 import { useAquaContext } from 'renderer/utils/AquaContext';
 import { setMainPreAmp } from 'renderer/utils/equalizerApi';
 import { clamp, useThrottleAndExecuteLatest } from 'renderer/utils/utils';
+import { ErrorDescription } from 'common/errors';
 import Chart, { ChartDimensions } from './Chart';
 import {
   IChartCurveData,
@@ -63,6 +64,7 @@ const FrequencyResponseChart = () => {
     isGraphViewOn,
     isLoading,
     preAmp,
+    setGlobalError,
     setPreAmp,
   } = useAquaContext();
   const prevFilters = useRef<IFiltersMap>({});
@@ -154,12 +156,19 @@ const FrequencyResponseChart = () => {
   }, [filters, preAmp]);
 
   useEffect(() => {
-    // Don't automatically adjust preamp if state hasn't been fetched yet
-    if (!isLoading && isAutoPreAmpOn) {
-      setMainPreAmp(autoPreAmpValue);
-      setPreAmp(autoPreAmpValue);
-    }
-  }, [autoPreAmpValue, isAutoPreAmpOn, isLoading, setPreAmp]);
+    const adjustPreAmp = async () => {
+      // Don't automatically adjust preamp if state hasn't been fetched yet
+      if (!isLoading && isAutoPreAmpOn) {
+        try {
+          await setMainPreAmp(autoPreAmpValue);
+          setPreAmp(autoPreAmpValue);
+        } catch (e) {
+          setGlobalError(e as ErrorDescription);
+        }
+      }
+    };
+    adjustPreAmp();
+  }, [autoPreAmpValue, isAutoPreAmpOn, isLoading, setGlobalError, setPreAmp]);
 
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number>(0);

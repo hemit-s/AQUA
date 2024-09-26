@@ -47,6 +47,7 @@ enum ChannelEnum {
   LOAD_AUTO_EQ_PRESET = 'loadAutoEqPreset',
   CLEAR_GAINS = 'clearGains',
   SET_FIXED_BAND = 'setFixedBand',
+  UPDATE_CONFIG_FILE_PATH = 'updateConfigFilePath',
 }
 
 export default ChannelEnum;

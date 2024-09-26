@@ -38,6 +38,7 @@ export const givenCanWriteToAquaConfig = (given: DefineStepFunction) => {
       isGraphViewOn: false,
       isCaseSensitiveFs: false,
       preAmp: 0,
+      configFilePath: '',
       filters: { unique_id: getDefaultFilterWithId() },
     };
     const configDirPath = await getConfigPath();

@@ -65,7 +65,6 @@ export const serializePreset = (preset: IPresetV2) => {
 const CONFIG_CONTENT = 'Include: aqua.txt';
 const AQUA_LOCAL_CONFIG_FILENAME = 'state.txt';
 export const AQUA_CONFIG_FILENAME = 'aqua.txt';
-const CONFIG_FILENAME = 'config.txt';
 export const PRESETS_DIR = 'presets';
 
 export const addFileToPath = (pathPrefix: string, fileName: string) => {
@@ -201,25 +200,23 @@ export const flush = (state: IState, configDirPath: string) => {
   }
 };
 
-export const checkConfigFile = (configDirPath: string) => {
-  const configPath = addFileToPath(configDirPath, CONFIG_FILENAME);
+export const checkConfigFilePath = (configFilePath: string) => {
   try {
-    const content = fs.readFileSync(configPath, {
+    const content = fs.readFileSync(configFilePath, {
       encoding: 'utf8',
     });
     return content.search(CONFIG_CONTENT) !== -1;
   } catch (ex) {
-    throw new Error(`Unable to locate config file at ${configPath}`);
+    throw new Error(`Unable to locate config file at ${configFilePath}`);
   }
 };
 
-export const updateConfig = (configDirPath: string) => {
-  const configPath = addFileToPath(configDirPath, CONFIG_FILENAME);
+export const updateConfigFilePath = (configFilePath: string) => {
   try {
-    fs.appendFileSync(configPath, `\n${CONFIG_CONTENT}`, {
+    fs.appendFileSync(configFilePath, `\n${CONFIG_CONTENT}`, {
       encoding: 'utf8',
     });
   } catch (ex) {
-    throw new Error(`Unable to locate config file at ${configPath}`);
+    throw new Error(`Unable to locate config file at ${configFilePath}`);
   }
 };

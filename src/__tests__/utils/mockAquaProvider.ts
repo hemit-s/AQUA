@@ -32,13 +32,15 @@ const defaultAquaContext: IAquaContext = {
   isCaseSensitiveFs: DEFAULT_STATE.isCaseSensitiveFs,
   preAmp: DEFAULT_STATE.preAmp,
   filters: DEFAULT_STATE.filters,
+  configFilePath: DEFAULT_STATE.configFilePath,
   performHealthCheck: () => {},
   setGlobalError: (_newValue?: ErrorDescription) => {},
   setIsEnabled: (_newValue: boolean) => {},
   setAutoPreAmpOn: (_newValue: boolean) => {},
-  setGraphViewOn: (_newValue: boolean) => {},
+  setIsGraphViewOn: (_newValue: boolean) => {},
   setPreAmp: (_newValue: number) => {},
   dispatchFilter: (_action: FilterAction) => {},
+  setConfigFilePath: (_pathName: string) => {},
 };
 
 export default defaultAquaContext;

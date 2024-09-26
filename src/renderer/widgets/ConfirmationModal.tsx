@@ -16,54 +16,66 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import Button from './widgets/Button';
-import './styles/Modal.scss';
+import Button from './Button';
+import '../styles/Modal.scss';
+import Modal from './Modal';
 
-interface IPrereqMissingModalProps {
+interface IConfirmationModalProps {
   isLoading: boolean;
-  errorMsg: string;
-  actionMsg: string;
-  onRetry: () => void;
+  headerText: string;
+  bodyText: string;
+  isSumbitDisabled?: boolean;
+  onSubmit: () => void;
+  onCancel?: () => void;
+  children?: JSX.Element | string;
+  cancelText?: string;
+  submitText?: string;
 }
 
-export default function PrereqMissingModal({
+export default function ConfirmationModal({
   isLoading,
-  errorMsg,
-  actionMsg,
-  onRetry,
-}: IPrereqMissingModalProps) {
+  headerText,
+  bodyText,
+  isSumbitDisabled = false,
+  onSubmit,
+  onCancel,
+  children,
+  cancelText,
+  submitText,
+}: IConfirmationModalProps) {
   const handleClose = async () => {
     window.electron.ipcRenderer.closeApp();
   };
 
   return (
-    <div className="modal col">
-      <div className="modal-content">
-        <h1 className="header">Prerequisite Missing</h1>
-        <div className="body">
-          <p>
-            {errorMsg} {actionMsg}
-          </p>
-        </div>
-        <div className="footer row">
+    <Modal
+      headerContent={<h1>{headerText}</h1>}
+      bodyContent={
+        <>
+          <p>{bodyText}</p>
+          {children}
+        </>
+      }
+      footerContent={
+        <>
           <Button
-            ariaLabel="Exit"
+            ariaLabel="Cancel"
             isDisabled={isLoading}
             className="default"
-            handleChange={handleClose}
+            handleChange={onCancel || handleClose}
           >
-            Exit
+            {cancelText || 'Exit'}
           </Button>
           <Button
-            ariaLabel="Retry"
-            isDisabled={isLoading}
+            ariaLabel="Submit"
+            isDisabled={isLoading || isSumbitDisabled}
             className="default"
-            handleChange={onRetry}
+            handleChange={onSubmit}
           >
-            Close & Retry
+            {submitText || 'Close & Retry'}
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }

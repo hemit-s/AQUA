@@ -19,24 +19,29 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { KeyboardEvent, MouseEvent, useMemo } from 'react';
 import DeleteIcon from 'renderer/icons/DeleteIcon';
 import EditIcon from 'renderer/icons/EditIcon';
+import GearIcon from 'renderer/icons/GearIcon';
+import TimesIcon from 'renderer/icons/TimesIcon';
 import TrashIcon from 'renderer/icons/TrashIcon';
+import '../styles/IconButton.scss';
 
 export enum IconName {
   EDIT = 'Edit Icon',
   DELETE = 'Delete Icon',
   TRASH = 'Trash Icon',
+  GEAR = 'Gear Icon',
+  TIMES = 'Close Icon',
 }
 
 interface IIconButtonProps {
   icon: IconName;
-  isDisabled: boolean;
+  isDisabled?: boolean;
   className?: string;
   handleClick: (e?: MouseEvent) => void;
 }
 
 const IconButton = ({
   icon,
-  isDisabled,
+  isDisabled = false,
   className,
   handleClick,
 }: IIconButtonProps) => {
@@ -55,6 +60,10 @@ const IconButton = ({
         return <DeleteIcon />;
       case IconName.TRASH:
         return <TrashIcon />;
+      case IconName.GEAR:
+        return <GearIcon />;
+      case IconName.TIMES:
+        return <TimesIcon />;
       default:
         return null;
     }

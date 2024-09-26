@@ -68,7 +68,10 @@ const Line = ({
 
   // Define different types of animation that we can use
   const animateLeft = useCallback(() => {
-    const totalLength = ref.current ? ref.current.getTotalLength() : 100;
+    const totalLength =
+      ref.current && ref.current.getTotalLength
+        ? ref.current.getTotalLength()
+        : 100;
     d3.select(ref.current)
       .attr('opacity', 1)
       .attr('stroke-dasharray', `${totalLength} ${totalLength}`)
