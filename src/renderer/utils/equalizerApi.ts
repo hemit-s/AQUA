@@ -72,6 +72,23 @@ const promisifyResult = <Type>(
   });
 };
 
+const promisifyResultNoTimeout = <Type>(
+  responseHandler: (
+    arg: TResult<Type>,
+    resolve: (value: Type | PromiseLike<Type>) => void,
+    reject: (reason?: ErrorDescription) => void
+  ) => void,
+  channel: string
+) => {
+  return new Promise<Type>((resolve, reject) => {
+    const handler = (arg: unknown) => {
+      responseHandler(arg as TResult<Type>, resolve, reject);
+    };
+
+    window.electron.ipcRenderer.once(channel, handler);
+  });
+};
+
 const buildResponseHandler = <
   Type extends
     | string
@@ -151,6 +168,27 @@ export const savePreset = (presetName: string): Promise<void> => {
   const channel = ChannelEnum.SAVE_PRESET;
   window.electron.ipcRenderer.sendMessage(channel, [presetName]);
   return promisifyResult(setterResponseHandler, channel);
+};
+
+/**
+ * Import an EqualizerAPO preset into backend state
+ * @returns { Promise<void> } exception if failed
+ */
+export const importPreset = (): Promise<void> => {
+  const channel = ChannelEnum.IMPORT_PRESET;
+  window.electron.ipcRenderer.sendMessage(channel, []);
+  return promisifyResultNoTimeout(setterResponseHandler, channel);
+};
+
+/**
+ * Export preset into an EqualizerAPO file
+ * @param {string} presetName - name to save preset under
+ * @returns { Promise<void> } if save was successful
+ */
+export const exportPreset = (presetName: string): Promise<void> => {
+  const channel = ChannelEnum.EXPORT_PRESET;
+  window.electron.ipcRenderer.sendMessage(channel, [presetName]);
+  return promisifyResultNoTimeout(setterResponseHandler, channel);
 };
 
 /**
@@ -501,6 +539,17 @@ export const setFixedBand = (size: FixedBandSizeEnum): Promise<IFiltersMap> => {
     simpleResponseHandler<IFiltersMap>(),
     channel
   );
+};
+
+/**
+ * Update config file path
+ * @param {string} filePath - name of the new config file
+ * @returns { Promise<void> } exception if failed
+ */
+export const updateConfigFilePath = (filePath: string): Promise<void> => {
+  const channel = ChannelEnum.UPDATE_CONFIG_FILE_PATH;
+  window.electron.ipcRenderer.sendMessage(channel, [filePath]);
+  return promisifyResult(setterResponseHandler, channel);
 };
 
 /**

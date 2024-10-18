@@ -39,6 +39,8 @@ enum ChannelEnum {
   REMOVE_FILTER = 'removeFilter',
   LOAD_PRESET = 'loadPreset',
   SAVE_PRESET = 'savePreset',
+  IMPORT_PRESET = 'importPreset',
+  EXPORT_PRESET = 'exportPreset',
   DELETE_PRESET = 'deletePreset',
   RENAME_PRESET = 'renamePreset',
   GET_PRESET_FILE_LIST = 'getPresetFileList',
@@ -47,6 +49,7 @@ enum ChannelEnum {
   LOAD_AUTO_EQ_PRESET = 'loadAutoEqPreset',
   CLEAR_GAINS = 'clearGains',
   SET_FIXED_BAND = 'setFixedBand',
+  UPDATE_CONFIG_FILE_PATH = 'updateConfigFilePath',
 }
 
 export default ChannelEnum;

@@ -75,6 +75,8 @@ export const PREAMP_REGEX = /^Preamp: (-\d\.\d) dB$/;
 export const FILTER_REGEX =
   /^Filter [1-9]\d?: ON (PK|LS|HS) Fc ([1-9]\d{0,3}|[1,2]\d{4}) Hz Gain (-?[1,2]?\d\.\d) dB Q (\d\.\d\d)$/;
 
+export const DEFAULT_CONFIG_FILENAME = 'config.txt';
+
 /** ----- Application Interfaces ----- */
 
 export interface IFiltersMap {
@@ -95,8 +97,14 @@ export interface IState {
   isGraphViewOn: boolean;
   isCaseSensitiveFs: boolean;
   preAmp: number;
+  configFilePath: string;
   filters: IFiltersMap;
 }
+
+export const importPresetIntoState = (preset: IPresetV2, state: IState) => {
+  state.preAmp = preset.preAmp;
+  state.filters = preset.filters;
+};
 
 export interface IPresetV1 {
   preAmp: number;
@@ -165,6 +173,7 @@ export const getDefaultState = (): IState => {
     isGraphViewOn: true, // true as default so that spinner can be seen on initial load
     isCaseSensitiveFs: false, // false as default so we assume windows case insensitive behavior (foo = FoO)
     preAmp: 0,
+    configFilePath: '',
     filters: getDefaultFilters(),
   };
 };

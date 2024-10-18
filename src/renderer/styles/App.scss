@@ -33,7 +33,7 @@ body {
   align-items: center;
   margin: 0px;
 
-  #root {
+  .app {
     // Spacing and height
     padding: $spacing-m;
     padding-top: $spacing-s;
@@ -68,17 +68,47 @@ body {
 .title-bar {
   background-color: $primary-dark;
   height: $title-bar-height;
-  width: 100%;
+  margin-right: 150px;
   -webkit-app-region: drag; /* Allow user to drag the window using this titlebar */
   -webkit-user-select: none; /* Prevent user from selecting things */
   user-select: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-s;
 
-  span {
-    height: 100%;
-    display: flex;
+  .brand {
     margin-left: $spacing-m;
-    justify-content: end;
-    flex-direction: column;
+  }
+
+  .settings {
+    -webkit-app-region: none; /* Allow user to interact with the settings button */
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+.settings-modal {
+  .label-l {
+    font-size: 16px;
+    margin: $spacing-m 0;
+    font-weight: bold;
+  }
+  .label-m {
+    font-size: 13px;
+    font-weight: bold;
+    margin-right: $spacing-m;
+  }
+
+  .config-file-content {
+    align-items: center;
+
+    .file-picker {
+      flex: 1;
+      justify-content: space-between;
+    }
   }
 }
 
@@ -107,6 +137,7 @@ body {
 }
 
 .center {
+  display: flex;
   align-content: center;
   align-items: center;
   justify-content: center;

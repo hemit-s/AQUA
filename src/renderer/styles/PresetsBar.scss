@@ -34,6 +34,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   border-radius: $spacing-m;
   background: $primary-default;
 
+  .row {
+    gap: $spacing-s;
+  }
+
   h4 {
     margin: 1em 0 1em 0;
     justify-self: center;
@@ -42,6 +46,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   .button {
     // Ensure button width matches the list width
     margin: $spacing-xs 0;
+    flex-grow: 1;
   }
 
   .preset-name {

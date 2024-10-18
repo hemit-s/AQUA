@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
   addFileToPath,
-  checkConfigFile,
+  checkConfigFilePath,
   deletePreset,
   doesPresetExist,
   fetchPreset,
@@ -29,24 +29,27 @@ import {
   serializePreset,
   serializeState,
   stateToString,
-  updateConfig,
+  updateConfigFilePath,
 } from 'main/flush';
 import fs from 'fs';
 import {
+  DEFAULT_CONFIG_FILENAME,
   FilterTypeEnum,
   getDefaultState,
   IPresetV2,
   IState,
 } from 'common/constants';
+import path from 'path';
 
 const TEST_DATA_DIR = 'src/__tests__/data';
 const TEST_DATA_READ_DIR = addFileToPath(TEST_DATA_DIR, 'read_only');
 const TEST_DATA_WRITE_DIR = addFileToPath(TEST_DATA_DIR, 'write');
-const mockSettings = {
+const mockSettings: IState = {
   isEnabled: true,
   isAutoPreAmpOn: true,
   isGraphViewOn: true,
   isCaseSensitiveFs: false,
+  configFilePath: path.join(TEST_DATA_READ_DIR, DEFAULT_CONFIG_FILENAME),
   preAmp: 13,
   filters: {
     '7cf32e8a': {
@@ -250,20 +253,32 @@ describe('flush', () => {
     });
   });
 
-  describe('checkConfig', () => {
-    it('should return true for an existing preset', () => {
-      expect(() => checkConfigFile(TEST_DATA_DIR)).toThrow();
+  describe('checkConfigFilePath', () => {
+    it('should throw if file does not exist', () => {
+      expect(() =>
+        checkConfigFilePath(path.join(TEST_DATA_DIR, DEFAULT_CONFIG_FILENAME))
+      ).toThrow();
     });
 
-    it('should return false for a non-existing preset', () => {
-      expect(checkConfigFile(TEST_DATA_READ_DIR)).toBe(false);
+    it('should return false for an existing config file with missing content', () => {
+      expect(
+        checkConfigFilePath(
+          path.join(TEST_DATA_READ_DIR, DEFAULT_CONFIG_FILENAME)
+        )
+      ).toBe(false);
     });
   });
 
   describe('updateConfig', () => {
     it('should result in a valid config file', () => {
-      updateConfig(TEST_DATA_WRITE_DIR);
-      expect(checkConfigFile(TEST_DATA_WRITE_DIR)).toBe(true);
+      updateConfigFilePath(
+        path.join(TEST_DATA_WRITE_DIR, DEFAULT_CONFIG_FILENAME)
+      );
+      expect(
+        checkConfigFilePath(
+          path.join(TEST_DATA_WRITE_DIR, DEFAULT_CONFIG_FILENAME)
+        )
+      ).toBe(true);
     });
   });
 });

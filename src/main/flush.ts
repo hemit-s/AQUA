@@ -18,11 +18,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import fs from 'fs';
 import path from 'path';
+import { dialog } from 'electron';
 import {
+  FILTER_REGEX,
+  FilterTypeEnum,
+  getDefaultFilterWithId,
   getDefaultState,
+  IFilter,
+  IFiltersMap,
   IPresetV1,
   IPresetV2,
   IState,
+  MAX_NUM_FILTERS,
+  PREAMP_REGEX,
 } from '../common/constants';
 import {
   validatePresetV1,
@@ -65,7 +73,6 @@ export const serializePreset = (preset: IPresetV2) => {
 const CONFIG_CONTENT = 'Include: aqua.txt';
 const AQUA_LOCAL_CONFIG_FILENAME = 'state.txt';
 export const AQUA_CONFIG_FILENAME = 'aqua.txt';
-const CONFIG_FILENAME = 'config.txt';
 export const PRESETS_DIR = 'presets';
 
 export const addFileToPath = (pathPrefix: string, fileName: string) => {
@@ -190,36 +197,118 @@ export const renamePreset = (
   }
 };
 
-export const flush = (state: IState, configDirPath: string) => {
-  const configPath = addFileToPath(configDirPath, AQUA_CONFIG_FILENAME);
+export const flushExplicit = (state: IState, configFilePath: string) => {
   try {
-    fs.writeFileSync(configPath, stateToString(state), {
+    fs.writeFileSync(configFilePath, stateToString(state), {
       encoding: 'utf8',
     });
   } catch (ex) {
-    console.log(`Failed to flush to ${configPath}`);
+    console.log(`Failed to flush to ${configFilePath}`);
   }
 };
 
-export const checkConfigFile = (configDirPath: string) => {
-  const configPath = addFileToPath(configDirPath, CONFIG_FILENAME);
+export const flush = (state: IState, configDirPath: string) => {
+  const configPath = addFileToPath(configDirPath, AQUA_CONFIG_FILENAME);
+  flushExplicit(state, configPath);
+};
+
+export const checkConfigFilePath = (configFilePath: string) => {
   try {
-    const content = fs.readFileSync(configPath, {
+    const content = fs.readFileSync(configFilePath, {
       encoding: 'utf8',
     });
     return content.search(CONFIG_CONTENT) !== -1;
   } catch (ex) {
-    throw new Error(`Unable to locate config file at ${configPath}`);
+    throw new Error(`Unable to locate config file at ${configFilePath}`);
   }
 };
 
-export const updateConfig = (configDirPath: string) => {
-  const configPath = addFileToPath(configDirPath, CONFIG_FILENAME);
+export const updateConfigFilePath = (configFilePath: string) => {
   try {
-    fs.appendFileSync(configPath, `\n${CONFIG_CONTENT}`, {
+    fs.appendFileSync(configFilePath, `\n${CONFIG_CONTENT}`, {
       encoding: 'utf8',
     });
   } catch (ex) {
-    throw new Error(`Unable to locate config file at ${configPath}`);
+    throw new Error(`Unable to locate config file at ${configFilePath}`);
   }
+};
+
+export const openFsFileDialog = async () =>
+  dialog.showOpenDialog({ properties: ['promptToCreate'] });
+
+export const openFsDirectoryDialog = async () =>
+  dialog.showOpenDialog({ properties: ['openDirectory'] });
+
+export const readEqualizerApoFile = (filePath: string) => {
+  let preAmpParsed = 0;
+  const filters: IFiltersMap = {};
+  const file = fs.readFileSync(filePath, 'utf8');
+
+  file.split('\n').forEach((line, i) => {
+    if (Object.keys(filters).length >= MAX_NUM_FILTERS) {
+      // Ensure filters doesn't exceed filter count cap
+      return;
+    }
+    const preampMatch = line.match(PREAMP_REGEX);
+    if (preampMatch) {
+      if (preampMatch.length !== 2) {
+        throw new Error(
+          `Preamp regex match error for AutoEQ file: ${filePath}`
+        );
+      }
+
+      try {
+        preAmpParsed = parseFloat(preampMatch[1]);
+      } catch (err) {
+        throw new Error(
+          `Preamp float parse error for AutoEQ file: ${filePath}`
+        );
+      }
+      return;
+    }
+
+    const filterMatch = line.match(FILTER_REGEX);
+    if (filterMatch) {
+      if (filterMatch.length !== 5) {
+        throw new Error(
+          `Filter regex match error on line ${i} for AutoEQ file: ${filePath}`
+        );
+      }
+
+      const filter: IFilter = getDefaultFilterWithId();
+      switch (filterMatch[1]) {
+        case 'PK':
+          filter.type = FilterTypeEnum.PK;
+          break;
+        case 'LS':
+          filter.type = FilterTypeEnum.LSC;
+          break;
+        case 'HS':
+          filter.type = FilterTypeEnum.HSC;
+          break;
+        default:
+          throw new Error(
+            `Filter type not (PK|LS|HS) on line ${i} for AutoEQ file: ${filePath}`
+          );
+      }
+      try {
+        filter.frequency = Math.min(parseInt(filterMatch[2], 10), 20000);
+        filter.gain = parseFloat(filterMatch[3]);
+        filter.quality = parseFloat(filterMatch[4]);
+      } catch (err) {
+        throw new Error(
+          `Filter parameter parse error on line ${i} for AutoEQ file: ${filePath}`
+        );
+      }
+      filters[filter.id] = filter;
+    }
+    // Ignore any lines which we do not recognize
+  });
+
+  const preset: IPresetV2 = {
+    preAmp: preAmpParsed,
+    filters,
+  };
+
+  return preset;
 };

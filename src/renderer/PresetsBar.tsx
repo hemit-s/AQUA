@@ -83,6 +83,8 @@ interface IPresetsBarProps {
   savePreset: (presetName: string) => Promise<void>;
   renamePreset: (oldName: string, newName: string) => Promise<void>;
   deletePreset: (presetName: string) => Promise<void>;
+  importPreset: () => Promise<void>;
+  exportPreset: (presetName: string) => Promise<void>;
 }
 
 const PresetsBar = ({
@@ -91,12 +93,15 @@ const PresetsBar = ({
   savePreset,
   renamePreset,
   deletePreset,
+  importPreset,
+  exportPreset,
 }: IPresetsBarProps) => {
   const { globalError, isCaseSensitiveFs, performHealthCheck, setGlobalError } =
     useAquaContext();
 
   const [presetName, setPresetName] = useState<string>('');
   const [newPresetNameError, setNewPresetNameError] = useState<string>('');
+  const [ioPending, setIoPending] = useState<boolean>(false);
   const [presetNames, dispatchPresetNames] = useReducer<IPresetReducer>(
     presetReducer,
     []
@@ -161,6 +166,32 @@ const PresetsBar = ({
       } catch (e) {
         setGlobalError(e as ErrorDescription);
       }
+    }
+  };
+
+  // Import audio settings from an EqualizerAPO preset file
+  const handleImportPreset = async () => {
+    setIoPending(true);
+    try {
+      await importPreset();
+      performHealthCheck();
+    } catch (e) {
+      setGlobalError(e as ErrorDescription);
+    }
+    setIoPending(false);
+  };
+
+  // Export audio settings to an EqualizerAPO preset file
+  const handleExportPreset = async () => {
+    if (isExistingPresetSelected) {
+      setIoPending(true);
+      try {
+        await exportPreset(presetName);
+        performHealthCheck();
+      } catch (e) {
+        setGlobalError(e as ErrorDescription);
+      }
+      setIoPending(false);
     }
   };
 
@@ -312,7 +343,7 @@ const PresetsBar = ({
     <div className="presets-bar">
       <h4>Preset Menu</h4>
       <div className="row">
-        <div className="preset-name">Name:&nbsp;</div>
+        <div className="preset-name">Name:</div>
         <TextInput
           value={presetName}
           ariaLabel="Preset Name"
@@ -348,6 +379,24 @@ const PresetsBar = ({
       >
         Load selected preset
       </Button>
+      <div className="row">
+        <Button
+          ariaLabel="Import preset"
+          className="small"
+          isDisabled={!!globalError || ioPending}
+          handleChange={handleImportPreset}
+        >
+          Import Preset
+        </Button>
+        <Button
+          ariaLabel="Export preset"
+          className="small"
+          isDisabled={!!globalError || !isExistingPresetSelected || ioPending}
+          handleChange={handleExportPreset}
+        >
+          Export Preset
+        </Button>
+      </div>
     </div>
   );
 };

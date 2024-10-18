@@ -32,7 +32,7 @@ interface IGraphViewSwitchProps {
 }
 
 export default function GraphViewSwitch({ id }: IGraphViewSwitchProps) {
-  const { globalError, isGraphViewOn, setGlobalError, setGraphViewOn } =
+  const { globalError, isGraphViewOn, setGlobalError, setIsGraphViewOn } =
     useAquaContext();
 
   const handleToggle = useCallback(async () => {
@@ -42,18 +42,18 @@ export default function GraphViewSwitch({ id }: IGraphViewSwitchProps) {
 
         // Reduce window size before allowing parametric components to fill space
         await decreaseWindowSize();
-        setGraphViewOn(!isGraphViewOn);
+        setIsGraphViewOn(!isGraphViewOn);
       } else {
         await enableGraphView();
 
         // Set parametric components to a fixed height before increasing window size
-        setGraphViewOn(!isGraphViewOn);
+        setIsGraphViewOn(!isGraphViewOn);
         await increaseWindowSize();
       }
     } catch (e) {
       setGlobalError(e as ErrorDescription);
     }
-  }, [isGraphViewOn, setGlobalError, setGraphViewOn]);
+  }, [isGraphViewOn, setGlobalError, setIsGraphViewOn]);
 
   return (
     <Switch

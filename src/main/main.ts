@@ -33,17 +33,21 @@ import path from 'path';
 import fs from 'fs';
 import { exec } from 'child_process';
 import {
-  checkConfigFile,
+  checkConfigFilePath,
   fetchSettings,
   flush,
   save,
-  updateConfig,
+  updateConfigFilePath,
   savePreset,
   fetchPreset,
   renamePreset,
   doesPresetExist,
   PRESETS_DIR,
   deletePreset,
+  openFsDirectoryDialog,
+  openFsFileDialog,
+  readEqualizerApoFile,
+  flushExplicit,
 } from './flush';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
@@ -69,6 +73,9 @@ import {
   FixedBandSizeEnum,
   getDefaultFilters,
   IFiltersMap,
+  DEFAULT_CONFIG_FILENAME,
+  importPresetIntoState,
+  getDefaultState,
 } from '../common/constants';
 import { ErrorCode } from '../common/errors';
 import {
@@ -115,7 +122,7 @@ const setWindowDimension = (isExpanded: boolean) => {
 const userDataDir = app.getPath('userData');
 const presetPath = path.join(userDataDir, PRESETS_DIR);
 const state: IState = fetchSettings(userDataDir);
-let configPath = '';
+let equalizerApoConfigPath = '';
 
 try {
   // create presets dir if it doesn't exist
@@ -168,7 +175,7 @@ const handleError = (
   errorCode: ErrorCode
 ) => {
   const reply: TError = { errorCode };
-  console.log(channel);
+  console.log(`Error code ${errorCode} detected on channel ${channel}`);
   event.reply(channel, reply);
 };
 
@@ -177,11 +184,20 @@ const updateConfigPath = async (
   channel: ChannelEnum | string
 ) => {
   try {
-    // Retrive configPath assuming EqualizerAPO is installed
-    configPath = await getConfigPath();
+    // Fetch and set the equalizerApoConfigPath so we can edit aqua.txt
+    equalizerApoConfigPath = await getConfigPath();
+
+    if (!state.configFilePath) {
+      // Retrive configPath assuming EqualizerAPO is installed
+      state.configFilePath = path.join(
+        equalizerApoConfigPath,
+        DEFAULT_CONFIG_FILENAME
+      );
+    }
+
     // Overwrite the config file if necessary
-    if (!checkConfigFile(configPath)) {
-      updateConfig(configPath);
+    if (!checkConfigFilePath(state.configFilePath)) {
+      updateConfigFilePath(state.configFilePath);
     }
   } catch (e) {
     handleError(event, channel, ErrorCode.CONFIG_NOT_FOUND);
@@ -202,9 +218,21 @@ const handleUpdateHelper = async <T>(
     return;
   }
 
+  // Check that the config file exists
+  try {
+    checkConfigFilePath(
+      state.configFilePath ||
+        // Assume the equalizerApo config path has been fetched by the time we are processing updates
+        path.join(equalizerApoConfigPath, DEFAULT_CONFIG_FILENAME)
+    );
+  } catch (e) {
+    handleError(event, channel, ErrorCode.CONFIG_NOT_FOUND);
+    return;
+  }
+
   try {
     // Flush changes to EqualizerAPO with a retry in case several requests to write are occuring at the same time
-    retryHelper(5, () => flush(state, configPath));
+    retryHelper(5, () => flush(state, equalizerApoConfigPath));
   } catch (e) {
     handleError(event, channel, ErrorCode.FAILURE);
     return;
@@ -253,8 +281,7 @@ ipcMain.on(ChannelEnum.LOAD_PRESET, async (event, arg) => {
 
   try {
     const presetSettings: IPresetV2 = fetchPreset(presetName, presetPath);
-    state.preAmp = presetSettings.preAmp;
-    state.filters = presetSettings.filters;
+    importPresetIntoState(presetSettings, state);
     await handleUpdate(event, channel);
   } catch (ex) {
     console.log('Failed to read preset: ', presetName);
@@ -396,8 +423,7 @@ ipcMain.on(ChannelEnum.LOAD_AUTO_EQ_PRESET, async (event, arg) => {
 
   try {
     const presetSettings: IPresetV2 = getAutoEqPreset(deviceName, responseName);
-    state.preAmp = presetSettings.preAmp;
-    state.filters = presetSettings.filters;
+    importPresetIntoState(presetSettings, state);
     await handleUpdate(event, channel);
   } catch (ex) {
     console.log(
@@ -414,8 +440,6 @@ ipcMain.on(ChannelEnum.GET_STATE, async (event) => {
   if (res) {
     const reply: TSuccess<IState> = { result: state };
     event.reply(channel, reply);
-  } else {
-    handleError(event, channel, ErrorCode.CONFIG_NOT_FOUND);
   }
 });
 
@@ -665,12 +689,96 @@ ipcMain.on(ChannelEnum.SET_FIXED_BAND, async (event, arg) => {
   await handleUpdateHelper<IFiltersMap>(event, channel, state.filters);
 });
 
+ipcMain.on(ChannelEnum.UPDATE_CONFIG_FILE_PATH, async (event, arg) => {
+  const channel = ChannelEnum.UPDATE_CONFIG_FILE_PATH;
+  const filePath: string = arg[0];
+
+  // Cannot fall below the minimum number of filters
+  if (!fs.existsSync(filePath)) {
+    handleError(event, channel, ErrorCode.INVALID_PARAMETER);
+    return;
+  }
+
+  state.configFilePath = filePath;
+  await handleUpdate(event, channel);
+});
+
 ipcMain.on(ChannelEnum.SET_WINDOW_SIZE, async (event, arg) => {
   const channel = ChannelEnum.SET_WINDOW_SIZE;
   setWindowDimension(arg[0]);
 
   const reply: TSuccess<void> = { result: undefined };
   event.reply(channel, reply);
+});
+
+ipcMain.on(ChannelEnum.IMPORT_PRESET, async (event) => {
+  const channel = ChannelEnum.IMPORT_PRESET;
+  const reply: TSuccess<void> = { result: undefined };
+  let ret: Electron.OpenDialogReturnValue;
+  try {
+    ret = await openFsFileDialog();
+    if (ret.canceled || ret.filePaths.length === 0) {
+      event.reply(channel, reply);
+      return;
+      // getAutoEqPreset
+      // set state to the new state
+    }
+  } catch (ex) {
+    console.log(ex);
+    handleError(event, channel, ErrorCode.FILE_SYSTEM_ERROR);
+    return;
+  }
+
+  try {
+    const presetSettings: IPresetV2 = readEqualizerApoFile(ret.filePaths[0]);
+    importPresetIntoState(presetSettings, state);
+    await handleUpdate(event, channel);
+  } catch (ex) {
+    console.log(`Failed to load EqualizerAPO file ${ret.filePaths[0]}`);
+    console.log(ex);
+    handleError(event, channel, ErrorCode.PRESET_FILE_ERROR);
+  }
+});
+
+ipcMain.on(ChannelEnum.EXPORT_PRESET, async (event, arg) => {
+  const channel = ChannelEnum.EXPORT_PRESET;
+  const presetName = arg[0];
+  const reply: TSuccess<void> = { result: undefined };
+  let ret: Electron.OpenDialogReturnValue;
+  try {
+    ret = await openFsFileDialog();
+    if (ret.canceled || ret.filePaths.length === 0) {
+      event.reply(channel, reply);
+      return;
+      // getAutoEqPreset
+      // set state to the new state
+    }
+  } catch (ex) {
+    console.log(ex);
+    handleError(event, channel, ErrorCode.FILE_SYSTEM_ERROR);
+    return;
+  }
+
+  let presetSettings: IPresetV2;
+  try {
+    presetSettings = fetchPreset(presetName, presetPath);
+  } catch (ex) {
+    console.log('Failed to read preset: ', presetName);
+    console.log(ex);
+    handleError(event, channel, ErrorCode.PRESET_FILE_ERROR);
+    return;
+  }
+
+  try {
+    const tempState: IState = getDefaultState();
+    importPresetIntoState(presetSettings, tempState);
+    flushExplicit(tempState, ret.filePaths[0]);
+    event.reply(channel, reply);
+  } catch (ex) {
+    console.log(`Failed to export EqualizerAPO file ${ret.filePaths[0]}`);
+    console.log(ex);
+    handleError(event, channel, ErrorCode.PRESET_FILE_ERROR);
+  }
 });
 
 ipcMain.on('quit-app', () => {

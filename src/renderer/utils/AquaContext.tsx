@@ -70,8 +70,9 @@ export interface IAquaContext extends IState {
   setGlobalError: (newValue?: ErrorDescription) => void;
   setIsEnabled: (newValue: boolean) => void;
   setAutoPreAmpOn: (newValue: boolean) => void;
-  setGraphViewOn: (newValue: boolean) => void;
+  setIsGraphViewOn: (newValue: boolean) => void;
   setPreAmp: (newValue: number) => void;
+  setConfigFilePath: (newValue: string) => void;
   dispatchFilter: FilterDispatch;
 }
 
@@ -176,13 +177,11 @@ export const AquaProvider = ({ children }: IAquaProviderProps) => {
     DEFAULT_STATE.filters
   );
 
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [configFilePath, setConfigFilePath] = useState<string>(
+    DEFAULT_STATE.configFilePath
+  );
 
-  const setGraphViewOn = (newValue: boolean) => {
-    setIsGraphViewOn(newValue);
-    const root = document.getElementById('root');
-    root?.setAttribute('class', newValue ? '' : 'minimized');
-  };
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const performHealthCheck = useCallback(async () => {
     setIsLoading(true);
@@ -190,11 +189,12 @@ export const AquaProvider = ({ children }: IAquaProviderProps) => {
       const state = await getEqualizerState();
       setIsEnabled(state.isEnabled);
       setAutoPreAmpOn(state.isAutoPreAmpOn);
-      setGraphViewOn(state.isGraphViewOn);
+      setIsGraphViewOn(state.isGraphViewOn);
       setPreAmp(state.preAmp);
       dispatchFilter({ type: FilterActionEnum.INIT, filters: state.filters });
       setGlobalError(undefined);
       setIsCaseSensitiveFs(state.isCaseSensitiveFs);
+      setConfigFilePath(state.configFilePath);
     } catch (e) {
       setGlobalError(e as ErrorDescription);
     }
@@ -215,13 +215,15 @@ export const AquaProvider = ({ children }: IAquaProviderProps) => {
         isGraphViewOn,
         isCaseSensitiveFs,
         preAmp,
+        configFilePath,
         filters,
         performHealthCheck,
         setGlobalError,
         setIsEnabled,
         setAutoPreAmpOn,
-        setGraphViewOn,
+        setIsGraphViewOn,
         setPreAmp,
+        setConfigFilePath,
         dispatchFilter,
       }}
     >

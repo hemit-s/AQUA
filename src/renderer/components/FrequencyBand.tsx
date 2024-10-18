@@ -102,14 +102,18 @@ const FrequencyBand = forwardRef(
       2nd setGain finishes and we dispatch again. Another jitter occurs.
       Note that the final UI state is correct, but the ui changes are strange.
     */
-        dispatchFilter({
-          type: FilterActionEnum.GAIN,
-          id: filter.id,
-          newValue,
-        });
-        await setGain(filter.id, newValue);
+        try {
+          dispatchFilter({
+            type: FilterActionEnum.GAIN,
+            id: filter.id,
+            newValue,
+          });
+          await setGain(filter.id, newValue);
+        } catch (e) {
+          setGlobalError(e as ErrorDescription);
+        }
       },
-      [dispatchFilter, filter.id]
+      [dispatchFilter, filter.id, setGlobalError]
     );
 
     const throttleSetGain = useThrottleAndExecuteLatest(

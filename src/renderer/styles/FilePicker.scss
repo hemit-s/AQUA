@@ -1,0 +1,8 @@
+.file-picker {
+  align-items: center;
+
+  input[type='file'] {
+    // Hide input and use our own button styling on the label
+    display: none;
+  }
+}
